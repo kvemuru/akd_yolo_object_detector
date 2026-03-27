@@ -1,0 +1,13 @@
+name: akida-detector
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    - tensorflow>=2.16
+    - numpy>=1.24
+    - pyyaml>=6.0
+    - opencv-python-headless>=4.8
+    - pillow>=10.0

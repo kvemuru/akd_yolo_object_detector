@@ -1,0 +1,89 @@
+model:
+  name: "akida_yolo_detector"
+  input_shape: [224, 224, 3]
+  num_classes: 20  # PASCAL-VOC classes
+  alpha: 0.5  # Network width multiplier
+  grid_size: [7, 7]
+  num_anchors: 5
+  
+# Akida 1.0 compatible architecture
+akida_constraints:
+  input_bitwidth: 8
+  weight_bitwidth: 8
+  activation_bitwidth: 4  # 1, 2, or 4
+  max_kernel_size: 7
+  supported_kernels: [3, 5, 7]
+  stride_2_kernels: [3]  # Only 3x3 for stride 2
+
+# Anchors (computed from dataset)
+anchors:
+  # VOC 2007 anchor boxes (width, height)
+  values: [[1.12, 1.85], [2.00, 2.83], [3.19, 3.60], [4.55, 5.26], [5.49, 5.82]]
+
+# Training hyperparameters
+training:
+  epochs: 5
+  batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  momentum: 0.9
+  warmup_epochs: 5
+  lr_schedule: "cosine"  # "cosine", "step", or "constant"
+  
+# Data augmentation
+augmentation:
+  random_flip: true
+  random_rotation: 10  # degrees
+  random_crop: true
+  crop_padding: 4
+  cutout:
+    enabled: true
+    size: 16
+  mixup:
+    enabled: false
+    alpha: 0.2
+
+# Pruning
+pruning:
+  enabled: true
+  initial_sparsity: 0.0
+  final_sparsity: 0.7  # 70% zero weights
+  pruning_freq: 5  # epochs between pruning
+  method: "magnitude"  # "magnitude" or "random"
+
+# Quantization
+quantization:
+  enabled: true
+  weights_bits: 8
+  activations_bits: 4
+  calibration_samples: 1000
+
+# Paths
+paths:
+  data_dir: "./data"
+  checkpoint_dir: "./checkpoints"
+  log_dir: "./logs"
+  output_dir: "./output"
+
+# VOC dataset classes
+voc_classes:
+  - aeroplane
+  - bicycle
+  - bird
+  - boat
+  - bottle
+  - bus
+  - car
+  - cat
+  - chair
+  - cow
+  - diningtable
+  - dog
+  - horse
+  - motorbike
+  - person
+  - pottedplant
+  - sheep
+  - sofa
+  - train
+  - tvmonitor
