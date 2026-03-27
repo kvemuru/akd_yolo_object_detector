@@ -99,6 +99,19 @@ def cmd_quantize(args, config):
     print("QUANTIZATION")
     print("=" * 60)
     
+    # Get quantization config from settings
+    quant_config = config.get('quantization', {})
+    first_layer_bits = quant_config.get('first_layer_bits', 8)
+    other_layers_bits = quant_config.get('other_layers_bits', 4)
+    
+    # Get quantization configuration
+    from quantization.quantize import get_quantization_config, apply_mixed_weight_quantization
+    qconfig = get_quantization_config(
+        first_layer_bits=first_layer_bits,
+        other_layers_bits=other_layers_bits
+    )
+    print(f"\nQuantization config: {qconfig}")
+    
     # Load model
     print("\nLoading model...")
     model = create_detector(
@@ -113,9 +126,11 @@ def cmd_quantize(args, config):
     trainable, non_trainable, total = count_model_params(model)
     print(f"  Total parameters: {total:,}")
     
-    # Quantize
-    print("\nQuantizing model...")
-    quantized_model = quantize_8bit(model)
+    # Apply mixed weight quantization
+    print("\nApplying mixed weight quantization...")
+    print(f"  First layer: {first_layer_bits}-bit weights")
+    print(f"  Other layers: {other_layers_bits}-bit weights")
+    quantized_model = apply_mixed_weight_quantization(model, qconfig)
     
     # Save
     os.makedirs(config['paths']['output_dir'], exist_ok=True)

@@ -52,9 +52,12 @@ pruning:
   method: "magnitude"  # "magnitude" or "random"
 
 # Quantization
+# Note: First conv layer uses 8-bit, remaining layers use 4-bit for better accuracy/efficiency trade-off
 quantization:
   enabled: true
-  weights_bits: 8
+  weights_bits: 4
+  first_layer_bits: 8
+  other_layers_bits: 4
   activations_bits: 4
   calibration_samples: 1000
 

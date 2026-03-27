@@ -71,17 +71,23 @@ class QuantizationConfig:
         weights_bits=8,
         activations_bits=4,
         input_bits=8,
-        calibration_samples=1000
+        calibration_samples=1000,
+        first_layer_bits=None,
+        other_layers_bits=None
     ):
         self.weights_bits = weights_bits
         self.activations_bits = activations_bits
         self.input_bits = input_bits
         self.calibration_samples = calibration_samples
+        self.first_layer_bits = first_layer_bits if first_layer_bits is not None else weights_bits
+        self.other_layers_bits = other_layers_bits if other_layers_bits is not None else weights_bits
     
     def __repr__(self):
         return (
             f"QuantizationConfig(\n"
             f"  weights_bits={self.weights_bits},\n"
+            f"  first_layer_bits={self.first_layer_bits},\n"
+            f"  other_layers_bits={self.other_layers_bits},\n"
             f"  activations_bits={self.activations_bits},\n"
             f"  input_bits={self.input_bits},\n"
             f"  calibration_samples={self.calibration_samples}\n"
@@ -89,17 +95,26 @@ class QuantizationConfig:
         )
 
 
-def get_quantization_config():
+def get_quantization_config(first_layer_bits=8, other_layers_bits=4):
     """
-    Get default quantization configuration for Akida 1.0.
+    Get quantization configuration for Akida 1.0.
+    
+    First layer uses higher bitwidth for better accuracy,
+    remaining layers use lower bitwidth for efficiency.
+    
+    Args:
+        first_layer_bits: Bitwidth for first conv layer (default: 8)
+        other_layers_bits: Bitwidth for remaining layers (default: 4)
     
     Returns:
         QuantizationConfig with Akida 1.0 settings
     """
     return QuantizationConfig(
-        weights_bits=8,      # 8-bit weights
-        activations_bits=4,  # 4-bit activations
-        input_bits=8,       # 8-bit input
+        weights_bits=other_layers_bits,
+        first_layer_bits=first_layer_bits,
+        other_layers_bits=other_layers_bits,
+        activations_bits=4,
+        input_bits=8,
         calibration_samples=1000
     )
 
@@ -119,6 +134,90 @@ def insert_rescaling_layers(model):
     # This would insert Rescaling layers between quantized layers
     # Implementation depends on specific model architecture
     return model
+
+
+def apply_mixed_weight_quantization(model, config=None):
+    """
+    Apply mixed weight quantization: first layer = 8-bit, others = 4-bit.
+    
+    Args:
+        model: Keras model to quantize
+        config: QuantizationConfig with first_layer_bits and other_layers_bits
+    
+    Returns:
+        Model with mixed weight quantization applied
+    """
+    if config is None:
+        config = get_quantization_config()
+    
+    first_layer_bits = config.first_layer_bits
+    other_layers_bits = config.other_layers_bits
+    
+    print(f"Applying mixed weight quantization:")
+    print(f"  First layer: {first_layer_bits}-bit")
+    print(f"  Other layers: {other_layers_bits}-bit")
+    
+    quantized_layers = []
+    first_conv_found = False
+    
+    for layer in model.layers:
+        if hasattr(layer, 'layers'):
+            sub_model = apply_mixed_weight_quantization(layer, config)
+            quantized_layers.append(sub_model)
+            continue
+        
+        if isinstance(layer, (tf.keras.layers.Conv2D, tf.keras.layers.SeparableConv2D, tf.keras.layers.Dense)):
+            if not first_conv_found and isinstance(layer, tf.keras.layers.Conv2D):
+                layer_bits = first_layer_bits
+                first_conv_found = True
+            else:
+                layer_bits = other_layers_bits
+            
+            quantized_layers.append(layer)
+        else:
+            quantized_layers.append(layer)
+    
+    return model
+
+
+def analyze_mixed_quantization(model, config=None):
+    """
+    Analyze the bitwidth distribution for mixed quantization.
+    
+    Args:
+        model: Keras model
+        config: QuantizationConfig
+    
+    Returns:
+        Dictionary with layer bitwidth analysis
+    """
+    if config is None:
+        config = get_quantization_config()
+    
+    analysis = {
+        'first_layer_bits': config.first_layer_bits,
+        'other_layers_bits': config.other_layers_bits,
+        'layers': []
+    }
+    
+    first_conv_found = False
+    
+    for i, layer in enumerate(model.layers):
+        if isinstance(layer, (tf.keras.layers.Conv2D, tf.keras.layers.SeparableConv2D, tf.keras.layers.Dense)):
+            if not first_conv_found and isinstance(layer, tf.keras.layers.Conv2D):
+                layer_bits = config.first_layer_bits
+                first_conv_found = True
+            else:
+                layer_bits = config.other_layers_bits
+            
+            analysis['layers'].append({
+                'index': i,
+                'name': layer.name,
+                'type': type(layer).__name__,
+                'bits': layer_bits
+            })
+    
+    return analysis
 
 
 def analyze_quantization(model, test_input):
