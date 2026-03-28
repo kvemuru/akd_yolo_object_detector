@@ -1,6 +1,6 @@
 # Akida YOLO Object Detector
 
-A YOLOv2-based object detection model optimized for the Akida 1000 neuromorphic processor using TensorFlow/Keras and BrainChip's MetaTF framework.
+A YOLOv2-based object detection model targeted for the Akida 1000 neuromorphic processor using TensorFlow/Keras and BrainChip's MetaTF framework.
 
 ## Overview
 
@@ -8,6 +8,7 @@ This project implements an efficient object detector that can:
 - Detect 20 PASCAL-VOC object classes
 - Run on Akida 1000 neuromorphic hardware
 - Be trained, pruned, quantized, and converted for deployment
+
 
 ## Features
 
